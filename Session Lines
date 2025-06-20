@@ -1,0 +1,590 @@
+//@version=6
+indicator('Trading Sessions with High/Low Lines', 'Sessions+Lines', overlay=true, max_lines_count=500, max_boxes_count=500, max_labels_count=500, format=format.price, precision=5, scale=scale.right)
+
+// TIMEZONE SETTINGS
+i_timezone = input.string("UTC", "Timezone", options=["UTC", "UTC-12", "UTC-11", "UTC-10", "UTC-9", "UTC-8", "UTC-7", "UTC-6", "UTC-5", "UTC-4", "UTC-3", "UTC-2", "UTC-1", "UTC+1", "UTC+2", "UTC+3", "UTC+4", "UTC+5", "UTC+6", "UTC+7", "UTC+8", "UTC+9", "UTC+10", "UTC+11", "UTC+12"])
+
+// GROUPS
+g_tokyo = "TOKYO SESSION"
+g_london = "LONDON SESSION"
+g_newyork = "NEW YORK SESSION"
+g_sydney = "SYDNEY SESSION"
+g_alerts = "ALERTS"
+
+// ALERT SETTINGS
+i_enable_alerts = input.bool(true, "Enable Break Alerts", group=g_alerts)
+i_alert_high_breaks = input.bool(true, "Alert on High Breaks", group=g_alerts)
+i_alert_low_breaks = input.bool(true, "Alert on Low Breaks", group=g_alerts)
+
+// TOKYO SESSION
+i_tokyo_enabled = input.bool(true, "Enable Tokyo Session", group=g_tokyo)
+i_tokyo_time = input.session("0000-0900", "Tokyo Time", group=g_tokyo)
+i_tokyo_bg_color = input.color(color.new(color.yellow, 92), "Background Color", group=g_tokyo)
+i_tokyo_show_label = input.bool(true, "Show Session Label", group=g_tokyo)
+i_tokyo_max_lines = input.int(10, "Max Lines (High + Low)", minval=1, maxval=100, group=g_tokyo)
+
+// TOKYO HIGH ACTIVE
+i_tokyo_high_color = input.color(color.red, "High Line Color (Active)", group=g_tokyo)
+i_tokyo_high_style = input.string("Solid", "High Line Style (Active)", options=["Solid", "Dashed", "Dotted"], group=g_tokyo)
+i_tokyo_high_width = input.int(1, "High Line Width (Active)", minval=1, maxval=5, group=g_tokyo)
+
+// TOKYO LOW ACTIVE
+i_tokyo_low_color = input.color(color.blue, "Low Line Color (Active)", group=g_tokyo)
+i_tokyo_low_style = input.string("Solid", "Low Line Style (Active)", options=["Solid", "Dashed", "Dotted"], group=g_tokyo)
+i_tokyo_low_width = input.int(1, "Low Line Width (Active)", minval=1, maxval=5, group=g_tokyo)
+
+// TOKYO HIGH TOUCHED
+i_tokyo_high_touched_color = input.color(color.orange, "High Line Color (Touched)", group=g_tokyo)
+i_tokyo_high_touched_style = input.string("Dashed", "High Line Style (Touched)", options=["Solid", "Dashed", "Dotted"], group=g_tokyo)
+i_tokyo_high_touched_width = input.int(2, "High Line Width (Touched)", minval=1, maxval=5, group=g_tokyo)
+
+// TOKYO LOW TOUCHED
+i_tokyo_low_touched_color = input.color(color.lime, "Low Line Color (Touched)", group=g_tokyo)
+i_tokyo_low_touched_style = input.string("Dashed", "Low Line Style (Touched)", options=["Solid", "Dashed", "Dotted"], group=g_tokyo)
+i_tokyo_low_touched_width = input.int(2, "Low Line Width (Touched)", minval=1, maxval=5, group=g_tokyo)
+
+// TOKYO HIGH BROKEN
+i_tokyo_high_broken_color = input.color(color.gray, "High Line Color (Broken)", group=g_tokyo)
+i_tokyo_high_broken_style = input.string("Dotted", "High Line Style (Broken)", options=["Solid", "Dashed", "Dotted"], group=g_tokyo)
+i_tokyo_high_broken_width = input.int(1, "High Line Width (Broken)", minval=1, maxval=5, group=g_tokyo)
+
+// TOKYO LOW BROKEN
+i_tokyo_low_broken_color = input.color(color.gray, "Low Line Color (Broken)", group=g_tokyo)
+i_tokyo_low_broken_style = input.string("Dotted", "Low Line Style (Broken)", options=["Solid", "Dashed", "Dotted"], group=g_tokyo)
+i_tokyo_low_broken_width = input.int(1, "Low Line Width (Broken)", minval=1, maxval=5, group=g_tokyo)
+
+// LONDON SESSION
+i_london_enabled = input.bool(true, "Enable London Session", group=g_london)
+i_london_time = input.session("0800-1700", "London Time", group=g_london)
+i_london_bg_color = input.color(color.new(color.blue, 92), "Background Color", group=g_london)
+i_london_show_label = input.bool(true, "Show Session Label", group=g_london)
+i_london_max_lines = input.int(15, "Max Lines (High + Low)", minval=1, maxval=100, group=g_london)
+
+// LONDON HIGH ACTIVE
+i_london_high_color = input.color(color.red, "High Line Color (Active)", group=g_london)
+i_london_high_style = input.string("Solid", "High Line Style (Active)", options=["Solid", "Dashed", "Dotted"], group=g_london)
+i_london_high_width = input.int(1, "High Line Width (Active)", minval=1, maxval=5, group=g_london)
+
+// LONDON LOW ACTIVE
+i_london_low_color = input.color(color.blue, "Low Line Color (Active)", group=g_london)
+i_london_low_style = input.string("Solid", "Low Line Style (Active)", options=["Solid", "Dashed", "Dotted"], group=g_london)
+i_london_low_width = input.int(1, "Low Line Width (Active)", minval=1, maxval=5, group=g_london)
+
+// LONDON HIGH TOUCHED
+i_london_high_touched_color = input.color(color.orange, "High Line Color (Touched)", group=g_london)
+i_london_high_touched_style = input.string("Dashed", "High Line Style (Touched)", options=["Solid", "Dashed", "Dotted"], group=g_london)
+i_london_high_touched_width = input.int(2, "High Line Width (Touched)", minval=1, maxval=5, group=g_london)
+
+// LONDON LOW TOUCHED
+i_london_low_touched_color = input.color(color.lime, "Low Line Color (Touched)", group=g_london)
+i_london_low_touched_style = input.string("Dashed", "Low Line Style (Touched)", options=["Solid", "Dashed", "Dotted"], group=g_london)
+i_london_low_touched_width = input.int(2, "Low Line Width (Touched)", minval=1, maxval=5, group=g_london)
+
+// LONDON HIGH BROKEN
+i_london_high_broken_color = input.color(color.gray, "High Line Color (Broken)", group=g_london)
+i_london_high_broken_style = input.string("Dotted", "High Line Style (Broken)", options=["Solid", "Dashed", "Dotted"], group=g_london)
+i_london_high_broken_width = input.int(1, "High Line Width (Broken)", minval=1, maxval=5, group=g_london)
+
+// LONDON LOW BROKEN
+i_london_low_broken_color = input.color(color.gray, "Low Line Color (Broken)", group=g_london)
+i_london_low_broken_style = input.string("Dotted", "Low Line Style (Broken)", options=["Solid", "Dashed", "Dotted"], group=g_london)
+i_london_low_broken_width = input.int(1, "Low Line Width (Broken)", minval=1, maxval=5, group=g_london)
+
+// NEW YORK SESSION
+i_newyork_enabled = input.bool(true, "Enable New York Session", group=g_newyork)
+i_newyork_time = input.session("1330-2200", "New York Time", group=g_newyork)
+i_newyork_bg_color = input.color(color.new(color.green, 92), "Background Color", group=g_newyork)
+i_newyork_show_label = input.bool(true, "Show Session Label", group=g_newyork)
+i_newyork_max_lines = input.int(20, "Max Lines (High + Low)", minval=1, maxval=100, group=g_newyork)
+
+// NEW YORK HIGH ACTIVE
+i_newyork_high_color = input.color(color.red, "High Line Color (Active)", group=g_newyork)
+i_newyork_high_style = input.string("Solid", "High Line Style (Active)", options=["Solid", "Dashed", "Dotted"], group=g_newyork)
+i_newyork_high_width = input.int(1, "High Line Width (Active)", minval=1, maxval=5, group=g_newyork)
+
+// NEW YORK LOW ACTIVE
+i_newyork_low_color = input.color(color.blue, "Low Line Color (Active)", group=g_newyork)
+i_newyork_low_style = input.string("Solid", "Low Line Style (Active)", options=["Solid", "Dashed", "Dotted"], group=g_newyork)
+i_newyork_low_width = input.int(1, "Low Line Width (Active)", minval=1, maxval=5, group=g_newyork)
+
+// NEW YORK HIGH TOUCHED
+i_newyork_high_touched_color = input.color(color.orange, "High Line Color (Touched)", group=g_newyork)
+i_newyork_high_touched_style = input.string("Dashed", "High Line Style (Touched)", options=["Solid", "Dashed", "Dotted"], group=g_newyork)
+i_newyork_high_touched_width = input.int(2, "High Line Width (Touched)", minval=1, maxval=5, group=g_newyork)
+
+// NEW YORK LOW TOUCHED
+i_newyork_low_touched_color = input.color(color.lime, "Low Line Color (Touched)", group=g_newyork)
+i_newyork_low_touched_style = input.string("Dashed", "Low Line Style (Touched)", options=["Solid", "Dashed", "Dotted"], group=g_newyork)
+i_newyork_low_touched_width = input.int(2, "Low Line Width (Touched)", minval=1, maxval=5, group=g_newyork)
+
+// NEW YORK HIGH BROKEN
+i_newyork_high_broken_color = input.color(color.gray, "High Line Color (Broken)", group=g_newyork)
+i_newyork_high_broken_style = input.string("Dotted", "High Line Style (Broken)", options=["Solid", "Dashed", "Dotted"], group=g_newyork)
+i_newyork_high_broken_width = input.int(1, "High Line Width (Broken)", minval=1, maxval=5, group=g_newyork)
+
+// NEW YORK LOW BROKEN
+i_newyork_low_broken_color = input.color(color.gray, "Low Line Color (Broken)", group=g_newyork)
+i_newyork_low_broken_style = input.string("Dotted", "Low Line Style (Broken)", options=["Solid", "Dashed", "Dotted"], group=g_newyork)
+i_newyork_low_broken_width = input.int(1, "Low Line Width (Broken)", minval=1, maxval=5, group=g_newyork)
+
+// SYDNEY SESSION
+i_sydney_enabled = input.bool(true, "Enable Sydney Session", group=g_sydney)
+i_sydney_time = input.session("2100-0600", "Sydney Time", group=g_sydney)
+i_sydney_bg_color = input.color(color.new(color.purple, 92), "Background Color", group=g_sydney)
+i_sydney_show_label = input.bool(true, "Show Session Label", group=g_sydney)
+i_sydney_max_lines = input.int(25, "Max Lines (High + Low)", minval=1, maxval=100, group=g_sydney)
+
+// SYDNEY HIGH ACTIVE
+i_sydney_high_color = input.color(color.red, "High Line Color (Active)", group=g_sydney)
+i_sydney_high_style = input.string("Solid", "High Line Style (Active)", options=["Solid", "Dashed", "Dotted"], group=g_sydney)
+i_sydney_high_width = input.int(1, "High Line Width (Active)", minval=1, maxval=5, group=g_sydney)
+
+// SYDNEY LOW ACTIVE
+i_sydney_low_color = input.color(color.blue, "Low Line Color (Active)", group=g_sydney)
+i_sydney_low_style = input.string("Solid", "Low Line Style (Active)", options=["Solid", "Dashed", "Dotted"], group=g_sydney)
+i_sydney_low_width = input.int(1, "Low Line Width (Active)", minval=1, maxval=5, group=g_sydney)
+
+// SYDNEY HIGH TOUCHED
+i_sydney_high_touched_color = input.color(color.orange, "High Line Color (Touched)", group=g_sydney)
+i_sydney_high_touched_style = input.string("Dashed", "High Line Style (Touched)", options=["Solid", "Dashed", "Dotted"], group=g_sydney)
+i_sydney_high_touched_width = input.int(2, "High Line Width (Touched)", minval=1, maxval=5, group=g_sydney)
+
+// SYDNEY LOW TOUCHED
+i_sydney_low_touched_color = input.color(color.lime, "Low Line Color (Touched)", group=g_sydney)
+i_sydney_low_touched_style = input.string("Dashed", "Low Line Style (Touched)", options=["Solid", "Dashed", "Dotted"], group=g_sydney)
+i_sydney_low_touched_width = input.int(2, "Low Line Width (Touched)", minval=1, maxval=5, group=g_sydney)
+
+// SYDNEY HIGH BROKEN
+i_sydney_high_broken_color = input.color(color.gray, "High Line Color (Broken)", group=g_sydney)
+i_sydney_high_broken_style = input.string("Dotted", "High Line Style (Broken)", options=["Solid", "Dashed", "Dotted"], group=g_sydney)
+i_sydney_high_broken_width = input.int(1, "High Line Width (Broken)", minval=1, maxval=5, group=g_sydney)
+
+// SYDNEY LOW BROKEN
+i_sydney_low_broken_color = input.color(color.gray, "Low Line Color (Broken)", group=g_sydney)
+i_sydney_low_broken_style = input.string("Dotted", "Low Line Style (Broken)", options=["Solid", "Dashed", "Dotted"], group=g_sydney)
+i_sydney_low_broken_width = input.int(1, "Low Line Width (Broken)", minval=1, maxval=5, group=g_sydney)
+
+// HELPER FUNCTIONS
+f_session_started(session) =>
+    na(session[1]) and not na(session)
+
+f_session_ended(session) =>
+    not na(session[1]) and na(session)
+
+f_get_session(session_time, timezone) =>
+    time(timeframe.period, session_time, timezone)
+
+f_get_line_style(style_string) =>
+    style_string == "Solid" ? line.style_solid : style_string == "Dashed" ? line.style_dashed : line.style_dotted
+
+// SESSION CALCULATIONS
+tokyo_session = f_get_session(i_tokyo_time, i_timezone)
+london_session = f_get_session(i_london_time, i_timezone)
+newyork_session = f_get_session(i_newyork_time, i_timezone)
+sydney_session = f_get_session(i_sydney_time, i_timezone)
+
+// SESSION BACKGROUNDS
+bgcolor(i_tokyo_enabled and not na(tokyo_session) ? i_tokyo_bg_color : na)
+bgcolor(i_london_enabled and not na(london_session) ? i_london_bg_color : na)
+bgcolor(i_newyork_enabled and not na(newyork_session) ? i_newyork_bg_color : na)
+bgcolor(i_sydney_enabled and not na(sydney_session) ? i_sydney_bg_color : na)
+
+// SESSION LABELS
+if i_tokyo_enabled and i_tokyo_show_label and f_session_started(tokyo_session)
+    label.new(x=bar_index, y=high, text="TOKYO", style=label.style_label_down, color=color.new(color.yellow, 20), textcolor=color.black, size=size.small)
+
+if i_london_enabled and i_london_show_label and f_session_started(london_session)
+    label.new(x=bar_index, y=high, text="LONDON", style=label.style_label_down, color=color.new(color.blue, 20), textcolor=color.white, size=size.small)
+
+if i_newyork_enabled and i_newyork_show_label and f_session_started(newyork_session)
+    label.new(x=bar_index, y=high, text="NEW YORK", style=label.style_label_down, color=color.new(color.green, 20), textcolor=color.white, size=size.small)
+
+if i_sydney_enabled and i_sydney_show_label and f_session_started(sydney_session)
+    label.new(x=bar_index, y=high, text="SYDNEY", style=label.style_label_down, color=color.new(color.purple, 20), textcolor=color.white, size=size.small)
+
+// SESSION HIGH/LOW TRACKING
+var float tokyo_session_high = na
+var float tokyo_session_low = na
+var int tokyo_session_high_bar = na
+var int tokyo_session_low_bar = na
+
+var float london_session_high = na
+var float london_session_low = na
+var int london_session_high_bar = na
+var int london_session_low_bar = na
+
+var float newyork_session_high = na
+var float newyork_session_low = na
+var int newyork_session_high_bar = na
+var int newyork_session_low_bar = na
+
+var float sydney_session_high = na
+var float sydney_session_low = na
+var int sydney_session_high_bar = na
+var int sydney_session_low_bar = na
+
+// === ARRAYS ===
+var line[] sessionHighLines = array.new_line()
+var float[] sessionHighVals = array.new_float()
+var int[] sessionHighBars = array.new_int()
+var string[] sessionHighSessions = array.new_string()
+var bool[] sessionHighActive = array.new_bool()
+var bool[] sessionHighBroken = array.new_bool()
+var bool[] sessionHighTouched = array.new_bool()
+
+var line[] sessionLowLines = array.new_line()
+var float[] sessionLowVals = array.new_float()
+var int[] sessionLowBars = array.new_int()
+var string[] sessionLowSessions = array.new_string()
+var bool[] sessionLowActive = array.new_bool()
+var bool[] sessionLowBroken = array.new_bool()
+var bool[] sessionLowTouched = array.new_bool()
+
+// HELPER FUNCTION TO COUNT LINES PER SESSION
+f_count_session_lines(session_name) =>
+    high_count = 0
+    low_count = 0
+    
+    // Count high lines
+    if array.size(sessionHighLines) > 0
+        for i = 0 to array.size(sessionHighLines) - 1
+            if array.get(sessionHighSessions, i) == session_name
+                high_count += 1
+    
+    // Count low lines
+    if array.size(sessionLowLines) > 0
+        for i = 0 to array.size(sessionLowLines) - 1
+            if array.get(sessionLowSessions, i) == session_name
+                low_count += 1
+    
+    high_count + low_count
+
+// HELPER FUNCTION TO REMOVE OLDEST LINE FROM SESSION
+f_remove_oldest_session_line(session_name) =>
+    // Find oldest high line from this session
+    oldest_high_idx = -1
+    oldest_high_bar = 999999
+    
+    if array.size(sessionHighLines) > 0
+        for i = 0 to array.size(sessionHighLines) - 1
+            if array.get(sessionHighSessions, i) == session_name
+                bar_idx = array.get(sessionHighBars, i)
+                if bar_idx < oldest_high_bar
+                    oldest_high_bar := bar_idx
+                    oldest_high_idx := i
+    
+    // Find oldest low line from this session
+    oldest_low_idx = -1
+    oldest_low_bar = 999999
+    
+    if array.size(sessionLowLines) > 0
+        for i = 0 to array.size(sessionLowLines) - 1
+            if array.get(sessionLowSessions, i) == session_name
+                bar_idx = array.get(sessionLowBars, i)
+                if bar_idx < oldest_low_bar
+                    oldest_low_bar := bar_idx
+                    oldest_low_idx := i
+    
+    // Remove the oldest line (high or low)
+    if oldest_high_idx >= 0 and oldest_low_idx >= 0
+        if oldest_high_bar < oldest_low_bar
+            // Remove high line
+            line.delete(array.get(sessionHighLines, oldest_high_idx))
+            array.remove(sessionHighLines, oldest_high_idx)
+            array.remove(sessionHighVals, oldest_high_idx)
+            array.remove(sessionHighBars, oldest_high_idx)
+            array.remove(sessionHighSessions, oldest_high_idx)
+            array.remove(sessionHighActive, oldest_high_idx)
+            array.remove(sessionHighBroken, oldest_high_idx)
+            array.remove(sessionHighTouched, oldest_high_idx)
+        else
+            // Remove low line
+            line.delete(array.get(sessionLowLines, oldest_low_idx))
+            array.remove(sessionLowLines, oldest_low_idx)
+            array.remove(sessionLowVals, oldest_low_idx)
+            array.remove(sessionLowBars, oldest_low_idx)
+            array.remove(sessionLowSessions, oldest_low_idx)
+            array.remove(sessionLowActive, oldest_low_idx)
+            array.remove(sessionLowBroken, oldest_low_idx)
+            array.remove(sessionLowTouched, oldest_low_idx)
+    else if oldest_high_idx >= 0
+        // Remove high line
+        line.delete(array.get(sessionHighLines, oldest_high_idx))
+        array.remove(sessionHighLines, oldest_high_idx)
+        array.remove(sessionHighVals, oldest_high_idx)
+        array.remove(sessionHighBars, oldest_high_idx)
+        array.remove(sessionHighSessions, oldest_high_idx)
+        array.remove(sessionHighActive, oldest_high_idx)
+        array.remove(sessionHighBroken, oldest_high_idx)
+        array.remove(sessionHighTouched, oldest_high_idx)
+    else if oldest_low_idx >= 0
+        // Remove low line
+        line.delete(array.get(sessionLowLines, oldest_low_idx))
+        array.remove(sessionLowLines, oldest_low_idx)
+        array.remove(sessionLowVals, oldest_low_idx)
+        array.remove(sessionLowBars, oldest_low_idx)
+        array.remove(sessionLowSessions, oldest_low_idx)
+        array.remove(sessionLowActive, oldest_low_idx)
+        array.remove(sessionLowBroken, oldest_low_idx)
+        array.remove(sessionLowTouched, oldest_low_idx)
+
+// SESSION TRACKING
+if f_session_started(tokyo_session) and i_tokyo_enabled
+    tokyo_session_high := high
+    tokyo_session_low := low
+    tokyo_session_high_bar := bar_index
+    tokyo_session_low_bar := bar_index
+
+if not na(tokyo_session) and i_tokyo_enabled
+    if high > tokyo_session_high
+        tokyo_session_high := high
+        tokyo_session_high_bar := bar_index
+    if low < tokyo_session_low
+        tokyo_session_low := low
+        tokyo_session_low_bar := bar_index
+
+if f_session_started(london_session) and i_london_enabled
+    london_session_high := high
+    london_session_low := low
+    london_session_high_bar := bar_index
+    london_session_low_bar := bar_index
+
+if not na(london_session) and i_london_enabled
+    if high > london_session_high
+        london_session_high := high
+        london_session_high_bar := bar_index
+    if low < london_session_low
+        london_session_low := low
+        london_session_low_bar := bar_index
+
+if f_session_started(newyork_session) and i_newyork_enabled
+    newyork_session_high := high
+    newyork_session_low := low
+    newyork_session_high_bar := bar_index
+    newyork_session_low_bar := bar_index
+
+if not na(newyork_session) and i_newyork_enabled
+    if high > newyork_session_high
+        newyork_session_high := high
+        newyork_session_high_bar := bar_index
+    if low < newyork_session_low
+        newyork_session_low := low
+        newyork_session_low_bar := bar_index
+
+if f_session_started(sydney_session) and i_sydney_enabled
+    sydney_session_high := high
+    sydney_session_low := low
+    sydney_session_high_bar := bar_index
+    sydney_session_low_bar := bar_index
+
+if not na(sydney_session) and i_sydney_enabled
+    if high > sydney_session_high
+        sydney_session_high := high
+        sydney_session_high_bar := bar_index
+    if low < sydney_session_low
+        sydney_session_low := low
+        sydney_session_low_bar := bar_index
+
+// === SESSION HIGH HINZUFÜGEN ===
+if f_session_ended(tokyo_session) and i_tokyo_enabled and not na(tokyo_session_high)
+    // Check if we need to remove old lines
+    while f_count_session_lines("TOKYO") >= i_tokyo_max_lines
+        f_remove_oldest_session_line("TOKYO")
+    
+    val = tokyo_session_high
+    bar = tokyo_session_high_bar
+    l = line.new(x1=bar, y1=val, x2=bar, y2=val, xloc=xloc.bar_index, color=i_tokyo_high_color, width=i_tokyo_high_width, style=f_get_line_style(i_tokyo_high_style))
+    array.push(sessionHighLines, l)
+    array.push(sessionHighVals, val)
+    array.push(sessionHighBars, bar)
+    array.push(sessionHighSessions, "TOKYO")
+    array.push(sessionHighActive, true)
+    array.push(sessionHighBroken, false)
+    array.push(sessionHighTouched, false)
+
+if f_session_ended(london_session) and i_london_enabled and not na(london_session_high)
+    // Check if we need to remove old lines
+    while f_count_session_lines("LONDON") >= i_london_max_lines
+        f_remove_oldest_session_line("LONDON")
+    
+    val = london_session_high
+    bar = london_session_high_bar
+    l = line.new(x1=bar, y1=val, x2=bar, y2=val, xloc=xloc.bar_index, color=i_london_high_color, width=i_london_high_width, style=f_get_line_style(i_london_high_style))
+    array.push(sessionHighLines, l)
+    array.push(sessionHighVals, val)
+    array.push(sessionHighBars, bar)
+    array.push(sessionHighSessions, "LONDON")
+    array.push(sessionHighActive, true)
+    array.push(sessionHighBroken, false)
+    array.push(sessionHighTouched, false)
+
+if f_session_ended(newyork_session) and i_newyork_enabled and not na(newyork_session_high)
+    // Check if we need to remove old lines
+    while f_count_session_lines("NEWYORK") >= i_newyork_max_lines
+        f_remove_oldest_session_line("NEWYORK")
+    
+    val = newyork_session_high
+    bar = newyork_session_high_bar
+    l = line.new(x1=bar, y1=val, x2=bar, y2=val, xloc=xloc.bar_index, color=i_newyork_high_color, width=i_newyork_high_width, style=f_get_line_style(i_newyork_high_style))
+    array.push(sessionHighLines, l)
+    array.push(sessionHighVals, val)
+    array.push(sessionHighBars, bar)
+    array.push(sessionHighSessions, "NEWYORK")
+    array.push(sessionHighActive, true)
+    array.push(sessionHighBroken, false)
+    array.push(sessionHighTouched, false)
+
+if f_session_ended(sydney_session) and i_sydney_enabled and not na(sydney_session_high)
+    // Check if we need to remove old lines
+    while f_count_session_lines("SYDNEY") >= i_sydney_max_lines
+        f_remove_oldest_session_line("SYDNEY")
+    
+    val = sydney_session_high
+    bar = sydney_session_high_bar
+    l = line.new(x1=bar, y1=val, x2=bar, y2=val, xloc=xloc.bar_index, color=i_sydney_high_color, width=i_sydney_high_width, style=f_get_line_style(i_sydney_high_style))
+    array.push(sessionHighLines, l)
+    array.push(sessionHighVals, val)
+    array.push(sessionHighBars, bar)
+    array.push(sessionHighSessions, "SYDNEY")
+    array.push(sessionHighActive, true)
+    array.push(sessionHighBroken, false)
+    array.push(sessionHighTouched, false)
+
+// === SESSION LOW HINZUFÜGEN ===
+if f_session_ended(tokyo_session) and i_tokyo_enabled and not na(tokyo_session_low)
+    // Check if we need to remove old lines
+    while f_count_session_lines("TOKYO") >= i_tokyo_max_lines
+        f_remove_oldest_session_line("TOKYO")
+    
+    val = tokyo_session_low
+    bar = tokyo_session_low_bar
+    l = line.new(x1=bar, y1=val, x2=bar, y2=val, xloc=xloc.bar_index, color=i_tokyo_low_color, width=i_tokyo_low_width, style=f_get_line_style(i_tokyo_low_style))
+    array.push(sessionLowLines, l)
+    array.push(sessionLowVals, val)
+    array.push(sessionLowBars, bar)
+    array.push(sessionLowSessions, "TOKYO")
+    array.push(sessionLowActive, true)
+    array.push(sessionLowBroken, false)
+    array.push(sessionLowTouched, false)
+
+if f_session_ended(london_session) and i_london_enabled and not na(london_session_low)
+    // Check if we need to remove old lines
+    while f_count_session_lines("LONDON") >= i_london_max_lines
+        f_remove_oldest_session_line("LONDON")
+    
+    val = london_session_low
+    bar = london_session_low_bar
+    l = line.new(x1=bar, y1=val, x2=bar, y2=val, xloc=xloc.bar_index, color=i_london_low_color, width=i_london_low_width, style=f_get_line_style(i_london_low_style))
+    array.push(sessionLowLines, l)
+    array.push(sessionLowVals, val)
+    array.push(sessionLowBars, bar)
+    array.push(sessionLowSessions, "LONDON")
+    array.push(sessionLowActive, true)
+    array.push(sessionLowBroken, false)
+    array.push(sessionLowTouched, false)
+
+if f_session_ended(newyork_session) and i_newyork_enabled and not na(newyork_session_low)
+    // Check if we need to remove old lines
+    while f_count_session_lines("NEWYORK") >= i_newyork_max_lines
+        f_remove_oldest_session_line("NEWYORK")
+    
+    val = newyork_session_low
+    bar = newyork_session_low_bar
+    l = line.new(x1=bar, y1=val, x2=bar, y2=val, xloc=xloc.bar_index, color=i_newyork_low_color, width=i_newyork_low_width, style=f_get_line_style(i_newyork_low_style))
+    array.push(sessionLowLines, l)
+    array.push(sessionLowVals, val)
+    array.push(sessionLowBars, bar)
+    array.push(sessionLowSessions, "NEWYORK")
+    array.push(sessionLowActive, true)
+    array.push(sessionLowBroken, false)
+    array.push(sessionLowTouched, false)
+
+if f_session_ended(sydney_session) and i_sydney_enabled and not na(sydney_session_low)
+    // Check if we need to remove old lines
+    while f_count_session_lines("SYDNEY") >= i_sydney_max_lines
+        f_remove_oldest_session_line("SYDNEY")
+    
+    val = sydney_session_low
+    bar = sydney_session_low_bar
+    l = line.new(x1=bar, y1=val, x2=bar, y2=val, xloc=xloc.bar_index, color=i_sydney_low_color, width=i_sydney_low_width, style=f_get_line_style(i_sydney_low_style))
+    array.push(sessionLowLines, l)
+    array.push(sessionLowVals, val)
+    array.push(sessionLowBars, bar)
+    array.push(sessionLowSessions, "SYDNEY")
+    array.push(sessionLowActive, true)
+    array.push(sessionLowBroken, false)
+    array.push(sessionLowTouched, false)
+
+// === SESSION HIGH VERARBEITEN ===
+if array.size(sessionHighLines) > 0
+    for i = 0 to array.size(sessionHighLines) - 1
+        x1 = array.get(sessionHighBars, i)
+        y = array.get(sessionHighVals, i)
+        session = array.get(sessionHighSessions, i)
+        active = array.get(sessionHighActive, i)
+        touched = array.get(sessionHighTouched, i)
+        l = array.get(sessionHighLines, i)
+        if active
+            if close > y
+                array.set(sessionHighActive, i, false)
+                array.set(sessionHighBroken, i, true)
+                broken_color = session == "TOKYO" ? i_tokyo_high_broken_color : session == "LONDON" ? i_london_high_broken_color : session == "NEWYORK" ? i_newyork_high_broken_color : i_sydney_high_broken_color
+                broken_style = session == "TOKYO" ? f_get_line_style(i_tokyo_high_broken_style) : session == "LONDON" ? f_get_line_style(i_london_high_broken_style) : session == "NEWYORK" ? f_get_line_style(i_newyork_high_broken_style) : f_get_line_style(i_sydney_high_broken_style)
+                broken_width = session == "TOKYO" ? i_tokyo_high_broken_width : session == "LONDON" ? i_london_high_broken_width : session == "NEWYORK" ? i_newyork_high_broken_width : i_sydney_high_broken_width
+                line.set_color(l, broken_color)
+                line.set_style(l, broken_style)
+                line.set_width(l, broken_width)
+                line.set_xy2(l, bar_index, y)
+                
+                // ALERT FOR HIGH BREAK
+                if i_enable_alerts and i_alert_high_breaks
+                    alert_msg = "BREACH = Break of " + session + " High at " + str.tostring(y, "#.#####")
+                    alert(alert_msg, alert.freq_once_per_bar)
+            else
+                if not touched and high >= y
+                    array.set(sessionHighTouched, i, true)
+                    touched_color = session == "TOKYO" ? i_tokyo_high_touched_color : session == "LONDON" ? i_london_high_touched_color : session == "NEWYORK" ? i_newyork_high_touched_color : i_sydney_high_touched_color
+                    touched_style = session == "TOKYO" ? f_get_line_style(i_tokyo_high_touched_style) : session == "LONDON" ? f_get_line_style(i_london_high_touched_style) : session == "NEWYORK" ? f_get_line_style(i_newyork_high_touched_style) : f_get_line_style(i_sydney_high_touched_style)
+                    touched_width = session == "TOKYO" ? i_tokyo_high_touched_width : session == "LONDON" ? i_london_high_touched_width : session == "NEWYORK" ? i_newyork_high_touched_width : i_sydney_high_touched_width
+                    line.set_color(l, touched_color)
+                    line.set_style(l, touched_style)
+                    line.set_width(l, touched_width)
+                line.set_xy1(l, x1, y)
+                line.set_xy2(l, bar_index, y)
+
+// === SESSION LOW VERARBEITEN ===
+if array.size(sessionLowLines) > 0
+    for i = 0 to array.size(sessionLowLines) - 1
+        x1 = array.get(sessionLowBars, i)
+        y = array.get(sessionLowVals, i)
+        session = array.get(sessionLowSessions, i)
+        active = array.get(sessionLowActive, i)
+        touched = array.get(sessionLowTouched, i)
+        l = array.get(sessionLowLines, i)
+        if active
+            if close < y
+                array.set(sessionLowActive, i, false)
+                array.set(sessionLowBroken, i, true)
+                broken_color = session == "TOKYO" ? i_tokyo_low_broken_color : session == "LONDON" ? i_london_low_broken_color : session == "NEWYORK" ? i_newyork_low_broken_color : i_sydney_low_broken_color
+                broken_style = session == "TOKYO" ? f_get_line_style(i_tokyo_low_broken_style) : session == "LONDON" ? f_get_line_style(i_london_low_broken_style) : session == "NEWYORK" ? f_get_line_style(i_newyork_low_broken_style) : f_get_line_style(i_sydney_low_broken_style)
+                broken_width = session == "TOKYO" ? i_tokyo_low_broken_width : session == "LONDON" ? i_london_low_broken_width : session == "NEWYORK" ? i_newyork_low_broken_width : i_sydney_low_broken_width
+                line.set_color(l, broken_color)
+                line.set_style(l, broken_style)
+                line.set_width(l, broken_width)
+                line.set_xy2(l, bar_index, y)
+                
+                // ALERT FOR LOW BREAK
+                if i_enable_alerts and i_alert_low_breaks
+                    alert_msg = "BREACH = Break of " + session + " Low at " + str.tostring(y, "#.#####")
+                    alert(alert_msg, alert.freq_once_per_bar)
+            else
+                if not touched and low <= y
+                    array.set(sessionLowTouched, i, true)
+                    touched_color = session == "TOKYO" ? i_tokyo_low_touched_color : session == "LONDON" ? i_london_low_touched_color : session == "NEWYORK" ? i_newyork_low_touched_color : i_sydney_low_touched_color
+                    touched_style = session == "TOKYO" ? f_get_line_style(i_tokyo_low_touched_style) : session == "LONDON" ? f_get_line_style(i_london_low_touched_style) : session == "NEWYORK" ? f_get_line_style(i_newyork_low_touched_style) : f_get_line_style(i_sydney_low_touched_style)
+                    touched_width = session == "TOKYO" ? i_tokyo_low_touched_width : session == "LONDON" ? i_london_low_touched_width : session == "NEWYORK" ? i_newyork_low_touched_width : i_sydney_low_touched_width
+                    line.set_color(l, touched_color)
+                    line.set_style(l, touched_style)
+                    line.set_width(l, touched_width)
+                line.set_xy1(l, x1, y)
+                line.set_xy2(l, bar_index, y)
